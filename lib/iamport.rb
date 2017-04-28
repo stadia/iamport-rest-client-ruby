@@ -1,4 +1,6 @@
 require "iamport/version"
+require 'faraday'
+require 'faraday_middleware'
 
 module Iamport
   IAMPORT_HOST = "https://api.iamport.kr".freeze
@@ -6,6 +8,7 @@ module Iamport
   class Config
     attr_accessor :api_key
     attr_accessor :api_secret
+    attr_accessor :token
   end
 
   class << self
@@ -20,14 +23,16 @@ module Iamport
     # Get Token
     # https://api.iamport.kr/#!/authenticate/getToken
     def token
-      url = "#{IAMPORT_HOST}/users/getToken"
-      body = {
-          imp_key: config.api_key,
-          imp_secret: config.api_secret
-      }
-
-      result = Faraday.post url, body: body
-      result["response"]["access_token"]
+      return config.token unless config.token.nil?
+      result = conn.post do |req|
+        req.url '/users/getToken'
+        req.body = {
+            imp_key: config.api_key,
+            imp_secret: config.api_secret
+        }
+      end
+      config.token = result.body["response"]["access_token"]
+      config.token
     end
 
     # Get payment information using imp_uid
@@ -68,23 +73,32 @@ module Iamport
 
     private
 
-    # Get header data
-    def get_headers
-      { "Authorization" => token }
-    end
-
     # GET
     def pay_get(uri, payload = {})
-      url = "#{IAMPORT_HOST}/#{uri}"
-
-      Faraday.get(url, headers: get_headers, body: payload)['response']
+      result = conn.get do |req|
+        req.url uri
+        req.headers['Authorization'] = token
+        req.body = payload
+      end
+      result.body
     end
 
     # POST
     def pay_post(uri, payload = {})
-      url = "#{IAMPORT_HOST}/#{uri}"
+      result = conn.post do |req|
+        req.url uri
+        req.headers['Authorization'] = token
+        req.body = payload
+      end
+      result.body
+    end
 
-      Faraday.post(url, headers: get_headers, body: payload)['response']
+    def conn
+      Faraday.new(url: IAMPORT_HOST) do |conn|
+        conn.request :json
+        conn.response :json
+        conn.adapter Faraday.default_adapter
+      end
     end
   end
 end

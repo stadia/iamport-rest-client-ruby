@@ -8,7 +8,6 @@ module Iamport
   class Config
     attr_accessor :api_key
     attr_accessor :api_secret
-    attr_accessor :token
   end
 
   class << self
@@ -23,7 +22,6 @@ module Iamport
     # Get Token
     # https://api.iamport.kr/#!/authenticate/getToken
     def token
-      return config.token unless config.token.nil?
       result = conn.post do |req|
         req.url '/users/getToken'
         req.body = {
@@ -31,8 +29,7 @@ module Iamport
             imp_secret: config.api_secret
         }
       end
-      config.token = result.body["response"]["access_token"]
-      config.token
+      result.body["response"]["access_token"]
     end
 
     # Get payment information using imp_uid

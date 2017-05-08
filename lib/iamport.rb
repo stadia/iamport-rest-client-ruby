@@ -1,9 +1,9 @@
-require "iamport/version"
+require 'iamport/version'
 require 'faraday'
 require 'faraday_middleware'
 
 module Iamport
-  IAMPORT_HOST = "https://api.iamport.kr".freeze
+  IAMPORT_HOST = 'https://api.iamport.kr'.freeze
 
   class Config
     attr_accessor :api_key
@@ -29,7 +29,7 @@ module Iamport
             imp_secret: config.api_secret
         }
       end
-      result.body["response"]["access_token"]
+      result.body['response']['access_token']
     end
 
     # Get payment information using imp_uid
@@ -44,7 +44,7 @@ module Iamport
     # default items per page: 20
     # https://api.iamport.kr/#!/payments/getPaymentsByStatus
     def payments(options = {})
-      status = options[:status] || "all"
+      status = options[:status] || 'all'
       page = options[:page] || 1
 
       uri = "payments/status/#{status}?page=#{page}"
@@ -63,12 +63,27 @@ module Iamport
     # Canceled payments
     # https://api.iamport.kr/#!/payments/cancelPayment
     def cancel(body)
-      uri = "payments/cancel"
+      uri = 'payments/cancel'
+
+      pay_post(uri, body)
+    end
+
+    def subscribe(customer_uid, body)
+      uri = "/subscribe/customers/#{customer_uid}"
 
       pay_post(uri, body)
     end
 
     private
+
+    def pay_delete(uri, payload = {})
+      result = conn.delete do |req|
+        req.url uri
+        req.headers['Authorization'] = token
+        req.body = payload
+      end
+      result.body
+    end
 
     # GET
     def pay_get(uri, payload = {})
